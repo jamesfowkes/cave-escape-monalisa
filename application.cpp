@@ -114,6 +114,19 @@ static void handle_spell_url(char const * const url)
 
 }
 
+static void handle_open_url(char const * const url)
+{
+    (void)url;
+    eyes_open_close(false);
+    send_standard_erm_response();
+}
+
+static void handle_close_url(char const * const url)
+{
+    eyes_open_close(true);
+    send_standard_erm_response();
+}
+
 static void handle_move_url(char const * const url)
 {
     int32_t move_value;
@@ -151,12 +164,16 @@ static void handle_reset_url(char const * const url)
 static const char SPELL_WORD_URL[] PROGMEM = "/spell";
 static const char BLINK_URL[] PROGMEM = "/blink";
 static const char MOVE_URL[] PROGMEM = "/move";
+static const char OPEN_URL[] PROGMEM = "/open";
+static const char CLOSE_URL[] PROGMEM = "/close";
 static const char RESET_URL[] PROGMEM = "/reset";
 
 static http_get_handler s_handlers[] = 
 {
     {SPELL_WORD_URL, handle_spell_url},
     {MOVE_URL, handle_move_url},
+    {OPEN_URL, handle_open_url},
+    {CLOSE_URL, handle_close_url},
     {BLINK_URL, handle_blink_url},
     {RESET_URL, handle_reset_url},
     {"", NULL}
