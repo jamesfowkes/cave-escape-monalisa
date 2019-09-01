@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+
+<board type="Arduino Uno" name="Cave Escape Mona Lisa">
+    <info>
+        A two-digipot interface to the Adafruit "moving eyes" project
+
+        Eyes left: Y-axis maximum (5K)
+        Eyes right: Y-axis minimum (0R)
+        Eyes up: X-axis minimum (5K)
+        Eyes down: X-axis maximum (0R)
+    </info>
+    
+    <devices>
+        <device name="Ethernet" type="ENC28J60">
+            <setting id="cs_pin" value="10"></setting>
+        </device>
+        <device name="xaxis" type="MCP41XXX">
+            <setting id="cs_pin" value="8"/>
+        </device>
+        <device name="yaxis" type="MCP41XXX">
+            <setting id="cs_pin" value="9"/>
+        </device>
+        <device name="blink" type="Digital Output">
+            <setting id="pin" name="Output" value="7"/>
+            <setting id="startup_state" value="HIGH"/>
+        </device>
+    </devices>
+
+    <parameters>
+        <parameter name="target_degrees" type="Integer">
+            <setting id="type" value="int16_t"/>
+            <setting id="clip" value="false"/>
+            <setting id="min" value="-1"/>
+            <setting id="max" value="359"/>
+        </parameter>
+        <parameter name="letter_mapping" type="String">
+            <setting id="reset_value" value="ABCDEFGHIJKLMNOPQRSTUVWX"/>
+            <setting id="length" value="24"/>
+            <setting id="use_eeprom" value="true"/>
+        </parameter>
+    </parameters>
+    
+    <modules>
+        <module>HTTP Get Server</module>
+        <module>Task</module>
+    </modules>
+
+    <custom_code>
+        <file>application.cpp</file>
+        <file>blink.cpp</file>
+        <file>spell.cpp</file>
+        <file>application.hpp</file>
+    </custom_code>
+
+    <defines>
+        <define>ENC28J60_BUFFER_SIZE 128</define>
+    </defines>
+
+    <logging>
+        <log_module>APPLICATION</log_module>
+    </logging>
+
+    <raat protocol="url" loglevel="RAAT_LOG_LEVEL_DEBUG">
+        
+    </raat>
+</board>
