@@ -82,6 +82,14 @@ static void send_standard_erm_response()
     s_server.finish_headers();
 }
 
+static void handle_config_url(char const * const url)
+{
+    raat_logln_P(LOG_APP, PSTR("Handling %s"), url);
+    pParams->pletter_mapping->set(url+8);
+    raat_logln_P(LOG_APP, PSTR("New mapping: %s"), pParams->pletter_mapping->get());
+    send_standard_erm_response();
+}
+
 static void handle_spell_url(char const * const url)
 {
     char word[MAXIMUM_WORD_LENGTH+1];
@@ -161,6 +169,7 @@ static void handle_reset_url(char const * const url)
     send_standard_erm_response();
 }
 
+static const char CONFIG_URL[] PROGMEM = "/config";
 static const char SPELL_WORD_URL[] PROGMEM = "/spell";
 static const char BLINK_URL[] PROGMEM = "/blink";
 static const char MOVE_URL[] PROGMEM = "/move";
@@ -170,6 +179,7 @@ static const char RESET_URL[] PROGMEM = "/reset";
 
 static http_get_handler s_handlers[] = 
 {
+    {CONFIG_URL, handle_config_url},
     {SPELL_WORD_URL, handle_spell_url},
     {MOVE_URL, handle_move_url},
     {OPEN_URL, handle_open_url},
@@ -202,6 +212,10 @@ void raat_custom_setup(const raat_devices_struct& devices, const raat_params_str
     params.ptarget_degrees->set(-1);
     eyes_reset(devices.pxaxis, devices.pyaxis);
     eyes_open_close(true);
+
+    raat_logln_P(LOG_APP, PSTR("Cave Escape Mona Lisa"));
+    raat_logln_P(LOG_APP, PSTR("Mapping: %s"), pParams->pletter_mapping->get());
+
 }
 
 void raat_custom_loop(const raat_devices_struct& devices, const raat_params_struct& params)

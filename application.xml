@@ -35,7 +35,7 @@
         </parameter>
         <parameter name="letter_mapping" type="String">
             <setting id="reset_value" value="ABCDEFGHIJKLMNOPQRSTUVWX"/>
-            <setting id="length" value="24"/>
+            <setting id="length" value="25"/>
             <setting id="use_eeprom" value="true"/>
         </parameter>
     </parameters>
