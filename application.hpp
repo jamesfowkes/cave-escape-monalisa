@@ -1,7 +1,7 @@
 #ifndef _APPLICATION_H_
 #define _APPLICATION_H_
 
-#define MAXIMUM_WORD_LENGTH (12)
+#define MAXIMUM_WORD_LENGTH (32)
 
 typedef enum EyesDirection
 {

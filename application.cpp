@@ -7,6 +7,10 @@
 
 #include "http-get-server.hpp"
 
+#include "raat-oneshot-timer.hpp"
+#include "raat-oneshot-task.hpp"
+#include "raat-task.hpp"
+
 #include "MCP41XXX.hpp"
 
 #include "application.hpp"
@@ -14,6 +18,39 @@
 static HTTPGetServer s_server(false);
 static const raat_devices_struct * pDevices;
 static const raat_params_struct * pParams;
+
+static uint16_t spin_degrees = 0;
+static uint8_t spin_counter = 0;
+
+static void eyes_reset(MCP41XXX * xaxis, MCP41XXX * yaxis);
+static void eyes_set_degrees(uint16_t degrees, MCP41XXX * xaxis, MCP41XXX * yaxis);
+
+static void spin_task_fn(RAATOneShotTask& ThisTask, __attribute__((unused)) void * pTaskData)
+{   
+    bool restart_task = true;
+
+    eyes_set_degrees(spin_degrees, pDevices->pxaxis, pDevices->pyaxis);
+    spin_degrees++;
+    
+    if (spin_degrees >= 360)
+    {
+        if (spin_counter--)
+        {
+            spin_degrees = 0;       
+        }
+        else
+        {
+            restart_task = false;
+            eyes_reset(pDevices->pxaxis, pDevices->pyaxis);
+        }
+    }
+
+    if (restart_task)
+    {
+        ThisTask.start();
+    }
+}
+static RAATOneShotTask s_spin_task(1, spin_task_fn, NULL);
 
 static void eyes_set_degrees(uint16_t degrees, MCP41XXX * xaxis, MCP41XXX * yaxis)
 {
@@ -25,6 +62,11 @@ static void eyes_set_degrees(uint16_t degrees, MCP41XXX * xaxis, MCP41XXX * yaxi
     x = max(min(x, 255), 0);
     y = max(min(y, 255), 0);
     
+    if (x>0)
+    {
+        x = x * 0.8f;
+    }
+
     raat_logln_P(LOG_APP, PSTR("Setting %d: x=%d, y=%d"), degrees, x, y);
     xaxis->set_wiper(x);
     yaxis->set_wiper(y);
@@ -52,7 +94,7 @@ void eyes_set_direction(eEyesDirection eyesDirection)
         eyes_set_degrees(45, pDevices->pxaxis, pDevices->pyaxis);
         break;
     case DIR_RIGHT:
-        eyes_set_degrees(90, pDevices->pxaxis, pDevices->pyaxis);
+        eyes_set_degrees(85, pDevices->pxaxis, pDevices->pyaxis);
         break;
     case DIR_DNRIGHT:
         eyes_set_degrees(135, pDevices->pxaxis, pDevices->pyaxis);
@@ -64,7 +106,7 @@ void eyes_set_direction(eEyesDirection eyesDirection)
         eyes_set_degrees(225, pDevices->pxaxis, pDevices->pyaxis);
         break;
     case DIR_LEFT:
-        eyes_set_degrees(270, pDevices->pxaxis, pDevices->pyaxis);
+        eyes_set_degrees(275, pDevices->pxaxis, pDevices->pyaxis);
         break;
     case DIR_UPLEFT:
         eyes_set_degrees(315, pDevices->pxaxis, pDevices->pyaxis);
@@ -169,6 +211,20 @@ static void handle_reset_url(char const * const url)
     send_standard_erm_response();
 }
 
+static void handle_spin_url(char const * const url)
+{
+    uint16_t spin_params[1];
+
+    raat_logln_P(LOG_APP, PSTR("Handling %s"), url+6);
+    raat_parse_delimited_numerics<uint16_t>(url+6, spin_params, '/', 3);
+    raat_logln_P(LOG_APP, PSTR("Spinning %d times"), spin_params[0]);
+
+    spin_degrees = 0;
+    spin_counter = spin_params[0];
+    s_spin_task.start();
+    send_standard_erm_response();    
+}
+
 static const char CONFIG_URL[] PROGMEM = "/config";
 static const char SPELL_WORD_URL[] PROGMEM = "/spell";
 static const char BLINK_URL[] PROGMEM = "/blink";
@@ -176,6 +232,7 @@ static const char MOVE_URL[] PROGMEM = "/move";
 static const char OPEN_URL[] PROGMEM = "/open";
 static const char CLOSE_URL[] PROGMEM = "/close";
 static const char RESET_URL[] PROGMEM = "/reset";
+static const char SPIN_URL[] PROGMEM = "/spin";
 
 static http_get_handler s_handlers[] = 
 {
@@ -186,6 +243,7 @@ static http_get_handler s_handlers[] =
     {CLOSE_URL, handle_close_url},
     {BLINK_URL, handle_blink_url},
     {RESET_URL, handle_reset_url},
+    {SPIN_URL, handle_spin_url},
     {"", NULL}
 };
 
@@ -228,6 +286,7 @@ void raat_custom_loop(const raat_devices_struct& devices, const raat_params_stru
         params.ptarget_degrees->set(-1);
     }
 
+    s_spin_task.run();
     run_blink();
     run_speller();
 }

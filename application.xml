@@ -53,7 +53,7 @@
     </custom_code>
 
     <defines>
-        <define>ENC28J60_BUFFER_SIZE 128</define>
+        <define>ENC28J60_BUFFER_SIZE 256</define>
     </defines>
 
     <logging>

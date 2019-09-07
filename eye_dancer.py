@@ -1,15 +1,22 @@
 import requests
 import time
+import sys
+
+ip = sys.argv[1]
+
+requests.get("http://{}/open".format(ip))
+
+time.sleep(2)
 
 for i in range(60):
-	requests.get("http://192.168.0.134/move/{}".format(i*6))
+	requests.get("http://{}/move/{}".format(ip, i*6))
 	time.sleep(0.1)
 
-requests.get("http://192.168.0.134/move/0")
+requests.get("http://{}/move/0".format(ip))
 
 time.sleep(0.2)
 
-requests.get("http://192.168.0.134/reset")
+requests.get("http://{}/reset".format(ip))
 
-requests.get("http://192.168.0.134/blink/3/250/300")
+requests.get("http://{}/blink/3/250/300".format(ip))
 
