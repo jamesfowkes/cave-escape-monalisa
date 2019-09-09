@@ -24,6 +24,14 @@
             <setting id="pin" name="Output" value="7"/>
             <setting id="startup_state" value="HIGH"/>
         </device>
+        <device name="MotorDirection" type="Digital Output">
+            <setting id="pin" name="Output" value="5"/>
+            <setting id="startup_state" value="HIGH"/>
+        </device>
+        <device name="MotorSpeed" type="Analog Output">
+            <setting id="pin" name="Output" value="6"/>
+            <setting id="startup_state" value="HIGH"/>
+        </device>
     </devices>
 
     <parameters>
@@ -36,6 +44,10 @@
         <parameter name="letter_mapping" type="String">
             <setting id="reset_value" value="ABCDEFGHIJKLMNOPQRSTUVWX"/>
             <setting id="length" value="25"/>
+            <setting id="use_eeprom" value="true"/>
+        </parameter>
+        <parameter name="motor_speed" type="Integer">
+            <setting id="reset_value" value="255"/>
             <setting id="use_eeprom" value="true"/>
         </parameter>
     </parameters>

@@ -52,6 +52,31 @@ static void spin_task_fn(RAATOneShotTask& ThisTask, __attribute__((unused)) void
 }
 static RAATOneShotTask s_spin_task(1, spin_task_fn, NULL);
 
+static void motor_timeout_task_fn(RAATOneShotTask& ThisTask, __attribute__((unused)) void * pTaskData)
+{
+    pDevices->pMotorSpeed->set(0);
+}
+static RAATOneShotTask s_motor_timeout_task(1, motor_timeout_task_fn, NULL);
+
+static void set_motor_timeout_from_string(char * str)
+{
+    s_motor_timeout_task.reset();
+    if (str)
+    {
+        int32_t timeout_value;
+        if (raat_parse_single_numeric(str, timeout_value, NULL))
+        {
+            uint16_t capped_timeout_value = min((uint16_t)timeout_value, 20000);
+            s_motor_timeout_task.start(capped_timeout_value);
+        }
+    }
+
+    if (!s_motor_timeout_task.is_running())
+    {
+        s_motor_timeout_task.start(20000);
+    }
+}
+
 static void eyes_set_degrees(uint16_t degrees, MCP41XXX * xaxis, MCP41XXX * yaxis)
 {
     float radians = (degrees * 2 * 3.14159f) / 360.0f;
@@ -225,6 +250,39 @@ static void handle_spin_url(char const * const url)
     send_standard_erm_response();    
 }
 
+static void handle_curtain_raise_url(char const * const url)
+{
+    pDevices->pMotorDirection->set(true);
+    pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
+
+    set_motor_timeout_from_string(url ? url+15 : NULL);
+
+    if (url)
+    {
+        send_standard_erm_response();
+    }
+}
+static void handle_curtain_lower_url(char const * const url)
+{
+    pDevices->pMotorDirection->set(false);
+    pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
+    
+    set_motor_timeout_from_string(url ? url+15 : NULL);
+
+    if (url)
+    {
+        send_standard_erm_response();
+    }
+}
+static void handle_curtain_stop_url(char const * const url)
+{
+    pDevices->pMotorSpeed->set(0);
+    if (url)
+    {
+        send_standard_erm_response();
+    }
+}
+
 static const char CONFIG_URL[] PROGMEM = "/config";
 static const char SPELL_WORD_URL[] PROGMEM = "/spell";
 static const char BLINK_URL[] PROGMEM = "/blink";
@@ -233,6 +291,9 @@ static const char OPEN_URL[] PROGMEM = "/open";
 static const char CLOSE_URL[] PROGMEM = "/close";
 static const char RESET_URL[] PROGMEM = "/reset";
 static const char SPIN_URL[] PROGMEM = "/spin";
+static const char CURTAIN_RAISE[] PROGMEM = "/curtain/raise";
+static const char CURTAIN_LOWER[] PROGMEM = "/curtain/lower";
+static const char CURTAIN_STOP[] PROGMEM = "/curtain/stop";
 
 static http_get_handler s_handlers[] = 
 {
@@ -244,6 +305,9 @@ static http_get_handler s_handlers[] =
     {BLINK_URL, handle_blink_url},
     {RESET_URL, handle_reset_url},
     {SPIN_URL, handle_spin_url},
+    {CURTAIN_RAISE, handle_curtain_raise_url},
+    {CURTAIN_LOWER, handle_curtain_lower_url},
+    {CURTAIN_STOP, handle_curtain_stop_url},
     {"", NULL}
 };
 
@@ -287,6 +351,7 @@ void raat_custom_loop(const raat_devices_struct& devices, const raat_params_stru
     }
 
     s_spin_task.run();
+    s_motor_timeout_task.run();
     run_blink();
     run_speller();
 }
