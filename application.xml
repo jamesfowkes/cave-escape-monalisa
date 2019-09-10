@@ -24,7 +24,11 @@
             <setting id="pin" name="Output" value="7"/>
             <setting id="startup_state" value="HIGH"/>
         </device>
-        <device name="MotorDirection" type="Digital Output">
+        <device name="MotorDirection1" type="Digital Output">
+            <setting id="pin" name="Output" value="4"/>
+            <setting id="startup_state" value="HIGH"/>
+        </device>
+        <device name="MotorDirection2" type="Digital Output">
             <setting id="pin" name="Output" value="5"/>
             <setting id="startup_state" value="HIGH"/>
         </device>

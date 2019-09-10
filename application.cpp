@@ -15,6 +15,8 @@
 
 #include "application.hpp"
 
+#define MAX_MOTOR_RUNTIME_MS (25000)
+
 static HTTPGetServer s_server(false);
 static const raat_devices_struct * pDevices;
 static const raat_params_struct * pParams;
@@ -54,6 +56,7 @@ static RAATOneShotTask s_spin_task(1, spin_task_fn, NULL);
 
 static void motor_timeout_task_fn(RAATOneShotTask& ThisTask, __attribute__((unused)) void * pTaskData)
 {
+    raat_logln_P(LOG_APP, PSTR("Stopping motor"));
     pDevices->pMotorSpeed->set(0);
 }
 static RAATOneShotTask s_motor_timeout_task(1, motor_timeout_task_fn, NULL);
@@ -66,14 +69,16 @@ static void set_motor_timeout_from_string(char * str)
         int32_t timeout_value;
         if (raat_parse_single_numeric(str, timeout_value, NULL))
         {
-            uint16_t capped_timeout_value = min((uint16_t)timeout_value, 20000);
+            uint16_t capped_timeout_value = min((uint16_t)timeout_value, MAX_MOTOR_RUNTIME_MS);
+            raat_logln_P(LOG_APP, PSTR("Running motor for %u ms"), capped_timeout_value);
             s_motor_timeout_task.start(capped_timeout_value);
         }
     }
 
     if (!s_motor_timeout_task.is_running())
     {
-        s_motor_timeout_task.start(20000);
+        raat_logln_P(LOG_APP, PSTR("Running motor for %u ms"), MAX_MOTOR_RUNTIME_MS);
+        s_motor_timeout_task.start(MAX_MOTOR_RUNTIME_MS);
     }
 }
 
@@ -252,10 +257,12 @@ static void handle_spin_url(char const * const url)
 
 static void handle_curtain_raise_url(char const * const url)
 {
-    pDevices->pMotorDirection->set(true);
+    pDevices->pMotorDirection1->set(false);
+    pDevices->pMotorDirection2->set(true);
     pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
 
-    set_motor_timeout_from_string(url ? url+15 : NULL);
+    bool url_has_timeout = url && (*(url+14) == '/');
+    set_motor_timeout_from_string(url_has_timeout ? url+15 : NULL);
 
     if (url)
     {
@@ -264,10 +271,12 @@ static void handle_curtain_raise_url(char const * const url)
 }
 static void handle_curtain_lower_url(char const * const url)
 {
-    pDevices->pMotorDirection->set(false);
+    pDevices->pMotorDirection1->set(true);
+    pDevices->pMotorDirection2->set(false);
     pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
     
-    set_motor_timeout_from_string(url ? url+15 : NULL);
+    bool url_has_timeout = url && (*(url+14) == '/');
+    set_motor_timeout_from_string(url_has_timeout ? url+15 : NULL);
 
     if (url)
     {
