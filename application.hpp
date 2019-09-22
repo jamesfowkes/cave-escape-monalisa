@@ -30,5 +30,6 @@ void run_blink();
 void spell_word(char const * const word, uint16_t letter_time, uint16_t intermove_time, uint16_t interletter_time);
 char const * get_spelling_map(void);
 void run_speller(void);
+void spell_stop();
 
 #endif

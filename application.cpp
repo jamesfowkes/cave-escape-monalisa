@@ -17,7 +17,8 @@
 
 #define MAX_MOTOR_RUNTIME_MS (25000)
 
-static HTTPGetServer s_server(false);
+static HTTPGetServer s_server(NULL);
+
 static const raat_devices_struct * pDevices;
 static const raat_params_struct * pParams;
 
@@ -56,12 +57,13 @@ static RAATOneShotTask s_spin_task(1, spin_task_fn, NULL);
 
 static void motor_timeout_task_fn(RAATOneShotTask& ThisTask, __attribute__((unused)) void * pTaskData)
 {
+    (void)ThisTask; (void)pTaskData;
     raat_logln_P(LOG_APP, PSTR("Stopping motor"));
     pDevices->pMotorSpeed->set(0);
 }
 static RAATOneShotTask s_motor_timeout_task(1, motor_timeout_task_fn, NULL);
 
-static void set_motor_timeout_from_string(char * str)
+static void set_motor_timeout_from_string(char const * const str)
 {
     s_motor_timeout_task.reset();
     if (str)
@@ -149,25 +151,27 @@ void eyes_set_direction(eEyesDirection eyesDirection)
 
 static void send_standard_erm_response()
 {
-    s_server.set_response_code("200 OK");
-    s_server.set_header("Access-Control-Allow-Origin", "*");
+    s_server.set_response_code_P(PSTR("200 OK"));
+    s_server.set_header_P(PSTR("Access-Control-Allow-Origin"), PSTR("*"));
     s_server.finish_headers();
 }
 
-static void handle_config_url(char const * const url)
+static void handle_config_url(char const * const url, char const * const end)
 {
+    (void)end;
     raat_logln_P(LOG_APP, PSTR("Handling %s"), url);
-    pParams->pletter_mapping->set(url+8);
+    pParams->pletter_mapping->set(end+1);
     raat_logln_P(LOG_APP, PSTR("New mapping: %s"), pParams->pletter_mapping->get());
     send_standard_erm_response();
 }
 
-static void handle_spell_url(char const * const url)
+static void handle_spell_url(char const * const url, char const * const end)
 {
+    (void)end;
     char word[MAXIMUM_WORD_LENGTH+1];
-    raat_logln_P(LOG_APP, PSTR("Handling %s"), url+7);
+    raat_logln_P(LOG_APP, PSTR("Handling %s"), url);
 
-    char const * const word_start = url + 7;
+    char const * const word_start = end+1;
     char const * const word_end = strchr(word_start, '/');
 
     if (word_end)
@@ -194,23 +198,28 @@ static void handle_spell_url(char const * const url)
 
 }
 
-static void handle_open_url(char const * const url)
+static void handle_open_url(char const * const url, char const * const end)
 {
+    (void)end;
     (void)url;
     eyes_open_close(false);
     send_standard_erm_response();
 }
 
-static void handle_close_url(char const * const url)
+static void handle_close_url(char const * const url, char const * const end)
 {
+    (void)url;
+    (void)end;
     eyes_open_close(true);
     send_standard_erm_response();
 }
 
-static void handle_move_url(char const * const url)
+static void handle_move_url(char const * const url, char const * const end)
 {
+    (void)url;
+    (void)end;
     int32_t move_value;
-    if (raat_parse_single_numeric(url+6, move_value, NULL))
+    if (raat_parse_single_numeric(end+1, move_value, NULL))
     {
         move_value = move_value % 360;
         eyes_set_degrees((uint16_t)move_value, pDevices->pxaxis, pDevices->pyaxis);
@@ -219,11 +228,12 @@ static void handle_move_url(char const * const url)
     send_standard_erm_response();
 }
 
-static void handle_blink_url(char const * const url)
+static void handle_blink_url(char const * const url, char const * const end)
 {
+    (void)url;
     uint16_t blink_params[3];
-    raat_logln_P(LOG_APP, PSTR("Handling %s"), url+7);
-    raat_parse_delimited_numerics<uint16_t>(url+7, blink_params, '/', 3);
+    raat_logln_P(LOG_APP, PSTR("Handling %s"), end+1);
+    raat_parse_delimited_numerics<uint16_t>(end+1, blink_params, '/', 3);
 
     raat_logln_P(LOG_APP, PSTR("Blinking %d times (%d on, %d off)"), blink_params[0], blink_params[1], blink_params[2]);
 
@@ -232,21 +242,23 @@ static void handle_blink_url(char const * const url)
     send_standard_erm_response();
 }
 
-static void handle_reset_url(char const * const url)
+static void handle_reset_url(char const * const url, char const * const end)
 {
-    (void)url;
+    (void)url; (void)end;
+    raat_logln_P(LOG_APP, PSTR("Resetting"));
     eyes_open_close(false);
     eyes_reset(pDevices->pxaxis, pDevices->pyaxis);
-
+    spell_stop();
     send_standard_erm_response();
 }
 
-static void handle_spin_url(char const * const url)
+static void handle_spin_url(char const * const url, char const * const end)
 {
+    (void)url;
     uint16_t spin_params[1];
 
-    raat_logln_P(LOG_APP, PSTR("Handling %s"), url+6);
-    raat_parse_delimited_numerics<uint16_t>(url+6, spin_params, '/', 3);
+    raat_logln_P(LOG_APP, PSTR("Handling %s"), end+1);
+    raat_parse_delimited_numerics<uint16_t>(end+1, spin_params, '/', 3);
     raat_logln_P(LOG_APP, PSTR("Spinning %d times"), spin_params[0]);
 
     spin_degrees = 0;
@@ -255,36 +267,38 @@ static void handle_spin_url(char const * const url)
     send_standard_erm_response();    
 }
 
-static void handle_curtain_raise_url(char const * const url)
+static void handle_curtain_raise_url(char const * const url, char const * const end)
 {
+    (void)url;
     pDevices->pMotorDirection1->set(false);
     pDevices->pMotorDirection2->set(true);
     pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
 
-    bool url_has_timeout = url && (*(url+14) == '/');
-    set_motor_timeout_from_string(url_has_timeout ? url+15 : NULL);
+    bool url_has_timeout = url && (*end == '/');
+    set_motor_timeout_from_string(url_has_timeout ? end+1 : NULL);
 
     if (url)
     {
         send_standard_erm_response();
     }
 }
-static void handle_curtain_lower_url(char const * const url)
+static void handle_curtain_lower_url(char const * const url, char const * const end)
 {
     pDevices->pMotorDirection1->set(true);
     pDevices->pMotorDirection2->set(false);
     pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
     
-    bool url_has_timeout = url && (*(url+14) == '/');
-    set_motor_timeout_from_string(url_has_timeout ? url+15 : NULL);
+    bool url_has_timeout = url && (*end == '/');
+    set_motor_timeout_from_string(url_has_timeout ? end+1 : NULL);
 
     if (url)
     {
         send_standard_erm_response();
     }
 }
-static void handle_curtain_stop_url(char const * const url)
+static void handle_curtain_stop_url(char const * const url, char const * const end)
 {
+    (void)end;
     pDevices->pMotorSpeed->set(0);
     if (url)
     {

@@ -109,6 +109,13 @@ void spell_word(char const * const word, uint16_t letter_time, uint16_t intermov
     }
 }
 
+void spell_stop()
+{
+    s_spell_state = STATE_IDLE;
+    s_index = 0;
+    s_spell_task.reset();
+}
+
 void run_speller()
 {
     s_spell_task.run();
