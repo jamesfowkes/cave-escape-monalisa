@@ -17,6 +17,14 @@
 
 #define MAX_MOTOR_RUNTIME_MS (25000)
 
+typedef enum _eMotorDirection
+{
+    eMotorDirection_Unknown,
+    eMotorDirection_Raise,
+    eMotorDirection_Lower
+} eMotorDirection;
+
+static eMotorDirection eLastMotorDirection = eMotorDirection_Unknown;
 static HTTPGetServer s_server(NULL);
 
 static const raat_devices_struct * pDevices;
@@ -27,6 +35,7 @@ static uint8_t spin_counter = 0;
 
 static void eyes_reset(MCP41XXX * xaxis, MCP41XXX * yaxis);
 static void eyes_set_degrees(uint16_t degrees, MCP41XXX * xaxis, MCP41XXX * yaxis);
+
 
 static void spin_task_fn(RAATOneShotTask& ThisTask, __attribute__((unused)) void * pTaskData)
 {   
@@ -269,14 +278,17 @@ static void handle_spin_url(char const * const url, char const * const end)
 
 static void handle_curtain_raise_url(char const * const url, char const * const end)
 {
-    (void)url;
-    pDevices->pMotorDirection1->set(false);
-    pDevices->pMotorDirection2->set(true);
-    pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
+    if (eLastMotorDirection != eMotorDirection_Raise)
+    {
+        eLastMotorDirection = eMotorDirection_Raise;
+        pDevices->pMotorDirection1->set(false);
+        pDevices->pMotorDirection2->set(true);
+        pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
 
-    bool url_has_timeout = url && (*end == '/');
-    set_motor_timeout_from_string(url_has_timeout ? end+1 : NULL);
-
+        bool url_has_timeout = url && (*end == '/');
+        set_motor_timeout_from_string(url_has_timeout ? end+1 : NULL);
+    
+    }
     if (url)
     {
         send_standard_erm_response();
@@ -284,12 +296,17 @@ static void handle_curtain_raise_url(char const * const url, char const * const 
 }
 static void handle_curtain_lower_url(char const * const url, char const * const end)
 {
-    pDevices->pMotorDirection1->set(true);
-    pDevices->pMotorDirection2->set(false);
-    pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
-    
-    bool url_has_timeout = url && (*end == '/');
-    set_motor_timeout_from_string(url_has_timeout ? end+1 : NULL);
+
+    if (eLastMotorDirection != eMotorDirection_Lower)
+    {
+        eLastMotorDirection = eMotorDirection_Lower;
+        pDevices->pMotorDirection1->set(true);
+        pDevices->pMotorDirection2->set(false);
+        pDevices->pMotorSpeed->set(pParams->pmotor_speed->get());
+        
+        bool url_has_timeout = url && (*end == '/');
+        set_motor_timeout_from_string(url_has_timeout ? end+1 : NULL);
+    }
 
     if (url)
     {
